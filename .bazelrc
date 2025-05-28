@@ -1,0 +1,8 @@
+# .bazelrc
+build --compilation_mode=opt
+build --cxxopt='-std=c++20'
+build --action_env=SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk
+build --action_env=DARWIN_XCODE_VERSION_OVERRIDE=14.0
+build --copt=-mmacosx-version-min=10.15
+build --verbose_failures=true
+build --show_timestamps=true
