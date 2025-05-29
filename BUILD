@@ -16,6 +16,7 @@ cc_library(
 cc_library(
     name = "roam_tools",
     srcs = ["src/roam_tools.cpp"],
-    hdrs = ["src/roam_tools.h"],
+    hdrs = ["src/roam_tools.h",
+            "src/roam_shared.h"],
     visibility = ["//visibility:public"],
 )

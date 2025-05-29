@@ -44,6 +44,9 @@ namespace Tools
     {
         return std::ranges::distance(vec.begin(), std::ranges::find(vec, find_val));
     }
+    inline uint64_t time_s(){ //返回一个表示当前时刻距离 Unix 纪元（通常指 1970 年 1 月 1 日午夜）过去了多少秒的整数
+        return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    }
     //* set atomic<bool> to true on construct,set to false on destruct
     class atomic_lock
     {
@@ -58,6 +61,7 @@ namespace Tools
         atomic_lock(atomic_lock &&other) = delete;
         atomic_lock &operator=(atomic_lock &&other) = delete;
     };
+
 }
 
 // simple implementation of logger

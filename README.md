@@ -11,11 +11,21 @@ A todo list program written by c++.
 5. OKR 接入，自动生成周报、月报。
 6. 多系统联动支持
 
-
-
 2025.05.28
 
 1. add Logger, todo: log_write
 2. Tools: add atomic_lock class.
 3. Term init()
 4. fix bazel compile error of macosx
+
+2025.0529
+
+1. finish Logger. log_write finish. lose_priv 降级uid
+2. 实现 tool ： time_s 利用std::chrono 计算 当前时间（s）
+3. 实现 tool ： strf_time ： 输入一个string表示时间格式，返回当前时间根据该格式 format 的结果。
+4. 增加roam_shared.h  用来声明global 的变量。
+5. 写日志 log_write 逻辑： log file 如果已经存在且文件大小大于1MB，则将老日志文件rename 到 .1  原来的.1文件如果存在的话删除
+   1. 另外如果第一次写日志会记录version， 之后正常写日志。
+6. vector.at() 和 vector[] 的区别是 at 在越界时会抛异常，[]不检查越界， 但性能更好。
+7. clean_quit没有实现干净，里面要先实现runner。
+8. 准备先实现cli class
