@@ -29,3 +29,9 @@ A todo list program written by c++.
 6. vector.at() 和 vector[] 的区别是 at 在越界时会抛异常，[]不检查越界， 但性能更好。
 7. clean_quit没有实现干净，里面要先实现runner。
 8. 准备先实现cli class
+
+2025.0604
+
+1. TODO： bazel 自动记录 config.h记录提交commit 号和compile信息 （利用genrule实现）
+2. btop的项目，用cmake进行的编译，其中在obj文件夹里有一个config.h里面记录了commit号，另外在src下面还有一个config.h.in 这是怎么实现
+3.
