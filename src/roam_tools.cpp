@@ -96,8 +96,7 @@ namespace Logger
     {
         loglevel = v_index(log_levels, level);
     }
-
-    void log_write(const Level &level, const std::string_view &msg)
+    void log_write(const Level level, const std::string_view msg)
     {
         if (loglevel < level || !logfile.has_value())
         {

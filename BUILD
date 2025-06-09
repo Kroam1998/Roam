@@ -5,6 +5,9 @@ cc_binary(
         "roam_lib",
         "roam_tools",
         "roam_cli",
+        "@fmt//:fmt",
+        "roam_config",
+        "roam_theme",
     ],
 )
 
@@ -29,4 +32,22 @@ cc_library(
             "src/roam_shared.h"],
     deps = ["@fmt//:fmt"],
     visibility = ["//visibility:public"],          
+)
+
+cc_library(
+    name = "roam_config",
+    srcs = ["src/roam_config.cpp"],
+    hdrs = ["src/roam_config.h",
+            "src/roam_shared.h",
+            "src/roam_tools.h"],
+    deps = ["@fmt//:fmt"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "roam_theme",
+    srcs = ["src/roam_theme.cpp"],
+    hdrs = ["src/roam_theme.h",
+            "src/roam_tools.h"],
+    visibility = ["//visibility:public"],
 )

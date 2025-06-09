@@ -6,6 +6,7 @@
 #include <span>
 #include <string_view>
 #include <variant>
+#include "roam_shared.h"
 
 namespace Cli{
     namespace stdfs = std::filesystem;

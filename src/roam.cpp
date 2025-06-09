@@ -1,8 +1,20 @@
 #include "roam.h"
 #include <unistd.h>
+#include <fmt/core.h>
 
 #include <iostream>
 #include <vector>
+
+#include "roam_cli.h"
+#include "roam_config.h"
+#include "roam_theme.h"
+#include "roam_tools.h"
+
+#ifdef __APPLE__
+#include <CoreFoundation/CoreFoundation.h>
+#include <mach-o/dyld.h>
+#include <limits.h>
+#endif
 
 using namespace std;
 using namespace Tools;
@@ -23,6 +35,11 @@ namespace Global
     atomic<bool> quitting(false);
     uid_t real_uid, set_uid;
     uint64_t start_time;
+
+    fs::path self_path;
+    bool debug{};
+
+    atomic<bool> init_conf(false);
 
 } // namespace Global
 
@@ -60,6 +77,15 @@ void clean_quit(const int code)
     cout << Global::exit_error_msg << endl;
     exit(code);
 }
+
+void init_config(bool low_color)
+{
+    atomic_lock lck(Global::init_conf);
+    vector<string> load_warinings;
+    Config::load(Config::conf_file, load_warinings);
+    
+}
+
 int main(const int argc, const char **argv)
 {
     display();
@@ -75,7 +101,90 @@ int main(const int argc, const char **argv)
             clean_quit(1);
         }
     }
+    Cli::Cli cli;
+    {
+        const std::vector<std::string_view> args{
+            std::next(argv, std::ptrdiff_t{1}),
+            std::next(argv, static_cast<std::ptrdiff_t>(argc))};
+        auto cli_or_ret = Cli::parse(args);
+        if (std::holds_alternative<Cli::Cli>(cli_or_ret))
+        {
+            cli = std::get<Cli::Cli>(cli_or_ret);
+        }
+        else
+        {
+            auto ret = std::get<std::int32_t>(cli_or_ret);
+            if (ret != 0)
+            {
+                Cli::usage();
+                Cli::help_hint();
+            }
+            return ret;
+        }
+    }
 
+    Global::debug = cli.debug;
+    {
+        const auto config_dir = Config::get_config_dir();
+        if (config_dir.has_value())
+        {
+            Config::conf_dir = config_dir.value();
+            if (cli.config_file.has_value())
+            {
+                Config::conf_file = cli.config_file.value();
+            }
+            else
+            {
+                Config::conf_file = Config::conf_dir / "roam.conf";
+            }
+            Logger::logfile = Config::get_log_file();
+            cout << "logile" << Logger::logfile.value() << endl;
+            Theme::user_theme_dir = Config::conf_dir / "themes";
+            cout << "theme dir" << Theme::user_theme_dir << endl;
+            std::error_code error;
+            if (!fs::exists(Theme::user_theme_dir, error) and !fs::create_directories(Theme::user_theme_dir, error))
+            {
+                Theme::user_theme_dir.clear();
+                Logger::warning("Failed to create user theme directory:" + error.message());
+            }
+        }
+    }
+#ifdef __linux__
+    {
+        std::error_code ec;
+        Global::self_path = fs::read_symlink("/proc/self/exe", ec).remove_filename();
+    }
+#elif __APPLE__
+    {
+        char buf[PATH_MAX];
+        uint32_t bufsize = PATH_MAX;
+        if (!_NSGetExecutablePath(buf, &bufsize))
+            Global::self_path = fs::path(buf).remove_filename();
+    }
+#endif
+    if (std::error_code ec; !Global::self_path.empty())
+    {
+        Theme::theme_dir = fs::canonical(Global::self_path / "../share/roam/themes", ec);
+        cout << "theme_dir" << Theme::theme_dir << endl;
+        if (ec or !fs::is_directory(Theme::theme_dir) or access(Theme::theme_dir.c_str(), R_OK))
+        {
+            Theme::theme_dir.clear();
+        }
+    }
+    if (Theme::theme_dir.empty())
+    {
+        for (auto theme_path : {"/usr/local/share/roam/themes", "/usr/share/roam/themes"})
+        {
+            if (fs::is_directory(fs::path(theme_path)) and access(theme_path, R_OK) != -1)
+            {
+                Theme::theme_dir = fs::path(theme_path);
+                break;
+            }
+        }
+    }
+    // init config
+    cout << "cli.low_color:" << cli.low_color << endl;
+    init_config(cli.low_color);
     if (!Term::init())
     {
         Global::exit_error_msg = "No tty detected!\nRoam needs an interactive terminal to run.";

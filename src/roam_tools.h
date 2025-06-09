@@ -24,6 +24,9 @@ namespace Fx
     const string ubl = e + "25m"; //* Blink off
     const string s = e + "9m";    //* Strike/crossed-out on
     const string us = e + "29m";  //* Strike/crossed-out on/off
+
+    const string reset_base = e + "0m";
+    extern string reset;
 } // namespace Fx
 
 namespace Term
@@ -47,6 +50,10 @@ namespace Tools
     inline uint64_t time_s(){ //返回一个表示当前时刻距离 Unix 纪元（通常指 1970 年 1 月 1 日午夜）过去了多少秒的整数
         return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     }
+    template <typename T>
+    constexpr bool s_contains(const std::string_view str, const T& find_val) {
+		return str.find(find_val) != string::npos;
+	}
     //* set atomic<bool> to true on construct,set to false on destruct
     class atomic_lock
     {
@@ -67,22 +74,22 @@ namespace Tools
 // simple implementation of logger
 namespace Logger
 {
-    const vector<string> log_levels = {"DEBUG", "INFO", "WARN", "ERROR", "DISABLED"};
-    extern std::optional<std::filesystem::path> log_file;
+    const vector<string> log_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "DISABLED"};
+    extern std::optional<std::filesystem::path> logfile;
     enum Level : std::uint8_t
     {
         DEBUG = 0,
         INFO = 1,
-        WARN = 2,
+        WARNING = 2,
         ERROR = 3,
         DISABLED = 4
     };
     // set log level
     void set(const string &level);
-    void log_write(const Level &level, const string &msg);
-    inline void error(const string &msg) { log_write(ERROR, msg); }
-    inline void info(const string &msg) { log_write(INFO, msg); }
-    inline void warn(const string &msg) { log_write(WARN, msg); }
-    inline void debug(const string &msg) { log_write(DEBUG, msg); }
+    void log_write(const Level level, const std::string_view msg);
+    inline void error(const string_view &msg) { log_write(ERROR, msg); }
+    inline void info(const string_view &msg) { log_write(INFO, msg); }
+    inline void warning(const string_view &msg) { log_write(WARNING, msg); }
+    inline void debug(const string_view &msg) { log_write(DEBUG, msg); }
 
 }
