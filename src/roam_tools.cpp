@@ -34,6 +34,24 @@ namespace Term
 
 namespace Tools
 {
+    string_view ltrim(string_view str, const string_view t_str) {
+		while (str.starts_with(t_str))
+			str.remove_prefix(t_str.size());
+
+		return str;
+	}
+    string_view rtrim(string_view str, const string_view t_str) {
+		while (str.ends_with(t_str))
+			str.remove_suffix(t_str.size());
+
+		return str;
+	}
+    
+    void atomic_wait(const atomic<bool> &atom, bool old) noexcept
+    {
+        while (atom.load(std::memory_order_relaxed) == old)
+            busy_wait();
+    }
     atomic_lock::atomic_lock(atomic<bool> &atom, bool wait) : atom(atom)
     {
         if (wait)
@@ -54,7 +72,7 @@ namespace Tools
         ss << std::put_time(localtime_r(&in_time_t, &bt), strf.c_str());
         return ss.str();
     }
-    
+
 }
 
 namespace Logger

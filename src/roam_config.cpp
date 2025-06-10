@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <optional>
 #include <fstream>
+#include <atomic>
 #include <array>
 #include <iostream>
 
@@ -11,14 +12,17 @@
 #include "roam_shared.h"
 #include "roam_tools.h"
 
-
+using std::atomic;
 using std::array;
-using namespace std;
 namespace fs = std::filesystem;
+namespace rng = std::ranges;
+using namespace std;
 using namespace Tools;
 
 namespace Config
 {
+    atomic<bool> locked (false);
+    atomic<bool> writelock (false);
     bool write_new;
     const vector<array<string, 2>> descriptions = {
 		{"color_theme", 		"#* Name of a btop++/bpytop/bashtop formatted \".theme\" file, \"Default\" and \"TTY\" for builtin themes.\n"
@@ -271,6 +275,48 @@ namespace Config
     fs::path conf_dir;
     fs::path conf_file;
 
+    bool _locked(const std::string_view name){
+        atomic_wait(writelock, true);
+        if(!write_new and rng::find_if(descriptions, [&name](const auto &a) { return a.at(0) == name;})!= descriptions.end())
+            write_new = true;
+        return locked.load();
+    }
+    string validError;
+    bool intValid(const std::string_view name, const string& value) {   
+        int i_value;
+        try{
+            i_value = stoi(value);
+        }catch (const std::invalid_argument&){
+            validError = "Invalid numerical value!";
+			return false;
+        }
+        catch (const std::out_of_range&) {
+			validError = "Value out of range!";
+			return false;
+		}
+		catch (const std::exception& e) {
+			validError = string{e.what()};
+			return false;
+		}
+        if (name == "update_ms" and i_value < 100)
+			validError = "Config value update_ms set too low (<100).";
+
+		else if (name == "update_ms" and i_value > ONE_DAY_MILLIS)
+			validError = fmt::format("Config value update_ms set too high (>{}).", ONE_DAY_MILLIS);
+        else
+			return true;
+        return false;
+
+    }
+
+    bool stringValid(const std::string_view name, const string& value) {
+        if (name == "log_level" and not v_contains(Logger::log_levels, value))
+			validError = "Invalid log_level: " + value;
+
+		//TODO: add more valid check
+        return true;
+    }
+
     void load(const fs::path &conf_file, vector<string> &load_warnings)
     {
         std::error_code error;
@@ -288,14 +334,61 @@ namespace Config
         }
         std::ifstream cread(conf_file);
         if (cread.good()){
-            cout << "cread good "<<endl;
             vector<string> valid_names;
             valid_names.reserve(descriptions.size());
             for (const auto &n : descriptions)
 				valid_names.push_back(n[0]);
             if (string v_string; cread.peek() != '#' or (getline(cread, v_string, '\n') and not s_contains(v_string, Global::Version)))
 				write_new = true;
-            
+            while (not cread.eof()) {
+				cread >> std::ws;
+				if (cread.peek() == '#') {
+					cread.ignore(SSmax, '\n');
+					continue;
+				}
+				string name, value;
+				getline(cread, name, '=');
+				if (name.ends_with(' ')) name = trim(name); // 去除name 左右两侧的空格
+				if (not v_contains(valid_names, name)) {
+					cread.ignore(SSmax, '\n');
+					continue;
+				}
+				cread >> std::ws;
+
+				if (bools.contains(name)) {
+					cread >> value;
+					if (not isbool(value))
+						load_warnings.push_back("Got an invalid bool value for config name: " + name);
+					else
+						bools.at(name) = stobool(value); // stobool 只判断是否是true ，减少了2次判断false的情况。
+				}
+				else if (ints.contains(name)) {
+					cread >> value;
+					if (not isint(value))
+						load_warnings.push_back("Got an invalid integer value for config name: " + name);
+					else if (not intValid(name, value)) {
+						load_warnings.push_back(validError);
+					}
+					else
+						ints.at(name) = stoi(value);
+				}
+				else if (strings.contains(name)) {
+					if (cread.peek() == '"') {
+						cread.ignore(1);
+						getline(cread, value, '"');
+					}
+					else cread >> value;
+
+					if (not stringValid(name, value))
+						load_warnings.push_back(validError);
+					else
+						strings.at(name) = value;
+				}
+
+				cread.ignore(SSmax, '\n');
+			}
+
+			if (not load_warnings.empty()) write_new = true;
         }
     }
 

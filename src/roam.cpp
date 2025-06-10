@@ -83,7 +83,20 @@ void init_config(bool low_color)
     atomic_lock lck(Global::init_conf);
     vector<string> load_warinings;
     Config::load(Config::conf_file, load_warinings);
+    Config::set("lowcolor",(low_color? true: !Config::getB("truecolor")));
     
+    static bool first_init = true;
+    if (Global::debug and first_init) {
+        Logger::set("DEBUG");
+        Logger::debug("Running in DEBUG mode!");        
+    } else Logger::set(Config::getS("log_level"));
+    static string log_level;
+    if(const string current_level = Config::getS("log_level"); log_level != current_level){
+        log_level = current_level;
+        Logger::info("Logger set to " + (Global::debug? "DEBUG" : log_level));        
+    }
+    for (const auto& err_str :load_warinings) Logger::warning(err_str);
+    first_init = false;
 }
 
 int main(const int argc, const char **argv)
@@ -185,11 +198,28 @@ int main(const int argc, const char **argv)
     // init config
     cout << "cli.low_color:" << cli.low_color << endl;
     init_config(cli.low_color);
+
+    // utf-8 skip for temporal
+
     if (!Term::init())
     {
         Global::exit_error_msg = "No tty detected!\nRoam needs an interactive terminal to run.";
+        cout << Global::exit_error_msg <<endl;
         clean_quit(1);
     }
+    if (Term::current_tty != "unknown") Logger::info("Running on " + Term::current_tty);
+    cout << "Term size " << Term::width << " x " << Term::height << endl ;
+    // {
+	// 	int t_count = 0;
+	// 	while (Term::width <= 0 or Term::width > 10000 or Term::height <= 0 or Term::height > 10000) {
+	// 		sleep_ms(10);
+	// 		Term::refresh();
+	// 		if (++t_count == 100) {
+	// 			Global::exit_error_msg = "Failed to get size of terminal!";
+	// 			clean_quit(1);
+	// 		}
+	// 	}
+	// }
 
     return 0;
 }
